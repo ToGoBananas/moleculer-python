@@ -56,10 +56,11 @@ class MoleculerConsumer:
             'ver': '2',
             'sender': self.node_id,
             'id': request_id,
-            'success': True
+            'success': True,
+            'data': {'result': 'Response from python node'}
         }
         sender_exchange = 'MOL.RES.{node_id}'.format(node_id=sender)
-        channel.basic_publish(sender_exchange, '', json.dumps(response_packet))
+        channel.basic_publish('', sender_exchange, json.dumps(response_packet))
 
     def disconnect(self, channel, basic_deliver, properties, body):
         pass
