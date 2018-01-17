@@ -298,7 +298,6 @@ class MoleculerClient(object):
                 self.stop()
                 if (self._connection is not None and
                         not self._connection.is_closed):
-                    # Finish closing
                     self._connection.ioloop.start()
 
         LOGGER.info('Stopped')
@@ -313,6 +312,12 @@ class MoleculerClient(object):
 
         """
         LOGGER.info('Stopping')
+        disconnect_packet = {
+            'ver': '2',
+            'sender': self.NODE_ID
+        }
+        self._channel.basic_publish(MOLECULER_EXCHANGES['DISCONNECT'], '',
+                                    json.dumps(disconnect_packet))
         self._stopping = True
         self.close_channel()
         self.close_connection()
