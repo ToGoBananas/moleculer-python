@@ -106,6 +106,7 @@ class MoleculerClient(object):
     def on_channel_open(self, channel):
         LOGGER.info('Channel opened')
         self._channel: Channel = channel
+        self._channel.basic_qos(prefetch_count=1)
         # self._channel.confirm_delivery()  # Enabled delivery confirmations
         self.add_on_channel_close_callback()
         self.create_topics()
@@ -236,7 +237,7 @@ class MoleculerClient(object):
         LOGGER.info('Declaring queue %s', queue_name)
         arguments = {}
         if ttl:
-            arguments['x-message-ttl'] = 3000
+            arguments['x-message-ttl'] = 5000  # eventTimeToLive: https://github.com/ice-services/moleculer/pull/72
         self._channel.queue_declare(self.on_queue_declareok, queue_name, arguments=arguments)
 
     def on_queue_declareok(self, method_frame):

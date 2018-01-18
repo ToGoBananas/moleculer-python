@@ -27,6 +27,10 @@ def request_handler(action: str, params: dict) -> bool:
     return True
 
 
+def event_handler(sender_node_id: str, event: str, payload: dict):
+    pass
+
+
 INFO_PACKET_TEMPLATE = {
     'ver': '2',
     'sender': None,

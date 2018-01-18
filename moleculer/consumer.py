@@ -1,7 +1,7 @@
 import json
 from .topics import EXCHANGES as MOLECULER_EXCHANGES
 import datetime
-from .service import request_handler, INFO_PACKET_TEMPLATE
+from .service import request_handler, INFO_PACKET_TEMPLATE, event_handler
 
 
 class MoleculerConsumer:
@@ -17,7 +17,7 @@ class MoleculerConsumer:
         if not self.is_node_discovered:
             info_packet = json.loads(body)
             sender = info_packet['sender']
-            if sender != self.node_id:
+            if sender != self.node_id:  # TODO: send info package anyway
                 info_packet = INFO_PACKET_TEMPLATE
                 info_packet['sender'] = self.node_id
                 info_packet['services'][0]['nodeID'] = self.node_id
@@ -63,8 +63,14 @@ class MoleculerConsumer:
         channel.basic_publish('', sender_exchange, json.dumps(response_packet))
 
     def disconnect(self, channel, basic_deliver, properties, body):
+        # TODO: remove disconnected services DISCOVERED list
         pass
 
     def response(self, channel, basic_deliver, properties, body):
         channel.basic_ack(basic_deliver.delivery_tag)
         #  TODO: handle responses from other services
+
+    def event(self, channel, basic_deliver, properties, body):
+        event_packet = json.loads(body)
+        sender, event, data = event_packet['sender'], event_packet['event'], event_packet['data']
+        event_handler(sender, event, data)
