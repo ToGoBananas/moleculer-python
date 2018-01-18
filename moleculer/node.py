@@ -142,11 +142,11 @@ class MoleculerNode(object):
 
         for queue_type, queue_name in queues:
             if queue_type in ('REQUEST', 'RESPONSE'):
-                self.setup_queue(queue_name, ttl=False, auto_delete=False)
+                self.setup_queue(queue_name, ttl=False, exclusive=False)
             elif queue_type == 'HEARTBEAT':
-                self.setup_queue(queue_name, ttl=True, auto_delete=True)
+                self.setup_queue(queue_name, ttl=True, exclusive=True)
             else:
-                self.setup_queue(queue_name, ttl=True, auto_delete=False)
+                self.setup_queue(queue_name, ttl=True, exclusive=False)
         for exchange_type, exchange_name in MOLECULER_EXCHANGES.items():
             self.setup_exchange(exchange_name)
 
@@ -227,7 +227,7 @@ class MoleculerNode(object):
         LOGGER.info('Exchange declared')
         self.ready_topics.append(None)
 
-    def setup_queue(self, queue_name, ttl=True, auto_delete=False):
+    def setup_queue(self, queue_name, ttl=True, exclusive=False):
         """Setup the queue on RabbitMQ by invoking the Queue.Declare RPC
         command. When it is complete, the on_queue_declareok method will
         be invoked by pika.
@@ -241,7 +241,7 @@ class MoleculerNode(object):
         arguments = {}
         if ttl:
             arguments['x-message-ttl'] = 5000  # eventTimeToLive: https://github.com/ice-services/moleculer/pull/72
-        self._channel.queue_declare(self.on_queue_declareok, queue_name, auto_delete=auto_delete, arguments=arguments)
+        self._channel.queue_declare(self.on_queue_declareok, queue_name, exclusive=exclusive, arguments=arguments)
 
     def on_queue_declareok(self, method_frame):
         """Method invoked by pika when the Queue.Declare RPC call made in
