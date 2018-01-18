@@ -132,13 +132,17 @@ class MoleculerClient(object):
             self._channel.basic_consume(self.consumer.ping, self.moleculer_topics.queues['PING'])
             self._channel.basic_consume(self.consumer.request, self.moleculer_topics.queues['REQUEST'])
             self._channel.basic_consume(self.consumer.response, self.moleculer_topics.queues['RESPONSE'])
+            for queue_name in self.moleculer_topics.action_queues:
+                self._channel.basic_consume(self.consumer.request, queue_name)
+
             self._connection.add_timeout(0.5, self.discover_packet)
         else:
             self._connection.add_timeout(0.1, self.subscribe_to_topics)
 
     def create_topics(self):
         queues = self.moleculer_topics.queues.items()
-        self.expect_topics_count = len(queues) + len(MOLECULER_EXCHANGES)
+        action_queues = self.moleculer_topics.action_queues
+        self.expect_topics_count = len(queues) + len(MOLECULER_EXCHANGES) + len(action_queues)
 
         for queue_type, queue_name in queues:
             if queue_type in ('REQUEST', 'RESPONSE'):
@@ -147,6 +151,10 @@ class MoleculerClient(object):
                 self.setup_queue(queue_name, ttl=True, auto_delete=True)
             else:
                 self.setup_queue(queue_name, ttl=True, auto_delete=False)
+
+        for queue_name in action_queues:
+            self.setup_queue(queue_name, ttl=False, auto_delete=False)
+
         for exchange_type, exchange_name in MOLECULER_EXCHANGES.items():
             self.setup_exchange(exchange_name)
 

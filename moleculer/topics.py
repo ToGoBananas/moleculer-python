@@ -1,3 +1,6 @@
+from .service import INFO_PACKET_TEMPLATE
+
+
 EXCHANGES = {
     'DISCOVER': 'MOL.DISCOVER',
     'INFO': 'MOL.INFO',
@@ -39,4 +42,12 @@ class MoleculerTopics:
         for queue_type, queue_name in self.queues.items():
             if queue_type in EXCHANGES:
                 result[queue_name] = EXCHANGES[queue_type]
+        return result
+
+    @property
+    def action_queues(self):
+        result = []
+        for service in INFO_PACKET_TEMPLATE['services']:
+            for action in service['actions'].keys():
+                result.append('MOL.REQB.{action}'.format(action=action))
         return result
