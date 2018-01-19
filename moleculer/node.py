@@ -23,9 +23,6 @@ class MoleculerNode(object):
     be closed, which usually are tied to permission related issues or
     socket timeouts.
 
-    It uses delivery confirmations and illustrates one way to keep track of
-    messages that have been sent and if they've been confirmed by RabbitMQ.
-
     """
 
     EXCHANGE_TYPE = 'fanout'
@@ -105,7 +102,7 @@ class MoleculerNode(object):
     def on_channel_open(self, channel):
         LOGGER.info('Channel opened')
         self._channel: Channel = channel
-        # self._channel.basic_qos(prefetch_count=1)
+        # self._channel.basic_qos(prefetch_count=1)  # TODO: figure out why prefetch must be disabled to make it work
         # self._channel.confirm_delivery()  # Enabled delivery confirmations
         self.add_on_channel_close_callback()
         self.create_topics()
