@@ -35,8 +35,8 @@ INFO_PACKET_TEMPLATE = {
     'ver': '2',
     'sender': None,
     'services': [{
-        'actions': {'python_test': service_builder('python_test')},
-        'events': {},
+        'actions': {'test': service_builder('test')},  # DO NOT name like service_name.action name. Just action name
+        'events': {'event_test': {'name': 'event_test'}},
         'metadata': {},
         'name': '$python',
         'nodeID': None,

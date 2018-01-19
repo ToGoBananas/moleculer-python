@@ -52,3 +52,12 @@ class MoleculerTopics:
             for action in service['actions'].keys():
                 result.append('MOL.REQB.{service_name}.{action}'.format(service_name=service_name, action=action))
         return result
+
+    @property
+    def event_queues(self):
+        result = []
+        for service in INFO_PACKET_TEMPLATE['services']:
+            service_name = service['name']
+            for event in service['events'].keys():
+                result.append('MOL.EVENTB.{service_name}.{event}'.format(service_name=service_name, event=event))
+        return result

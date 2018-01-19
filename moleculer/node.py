@@ -29,7 +29,7 @@ class MoleculerNode(object):
     """
 
     EXCHANGE_TYPE = 'fanout'
-    NODE_ID = 'python-node-2'
+    NODE_ID = 'python-node-1'
     HEARTBEAT_INTERVAL = 5
 
     def __init__(self, amqp_url, node_id=None):
@@ -105,7 +105,7 @@ class MoleculerNode(object):
     def on_channel_open(self, channel):
         LOGGER.info('Channel opened')
         self._channel: Channel = channel
-        self._channel.basic_qos(prefetch_count=1)
+        # self._channel.basic_qos(prefetch_count=1)
         # self._channel.confirm_delivery()  # Enabled delivery confirmations
         self.add_on_channel_close_callback()
         self.create_topics()
@@ -132,27 +132,34 @@ class MoleculerNode(object):
             self._channel.basic_consume(self.consumer.request, self.moleculer_topics.queues['REQUEST'])
             self._channel.basic_consume(self.consumer.response, self.moleculer_topics.queues['RESPONSE'])
             self._channel.basic_consume(self.consumer.event, self.moleculer_topics.queues['EVENT'])
+
             for queue_name in self.moleculer_topics.action_queues:
                 self._channel.basic_consume(self.consumer.request, queue_name)
+            for queue_name in self.moleculer_topics.event_queues:
+                self._channel.basic_consume(self.consumer.event, queue_name, no_ack=True)
+
             self._connection.add_timeout(0.5, self.discover_packet)
         else:
             self._connection.add_timeout(0.1, self.subscribe_to_topics)
 
     def create_topics(self):
         queues = self.moleculer_topics.queues.items()
-        action_queues = self.moleculer_topics.action_queues
-        self.expect_topics_count = len(queues) + len(MOLECULER_EXCHANGES) + len(action_queues)
+        action_queues, events_queues = self.moleculer_topics.action_queues, self.moleculer_topics.event_queues
+        self.expect_topics_count = len(queues) + len(MOLECULER_EXCHANGES) + len(action_queues) + len(events_queues)
 
         for queue_type, queue_name in queues:
             if queue_type in ('REQUEST', 'RESPONSE'):
                 self.setup_queue(queue_name, ttl=False, exclusive=False)
             elif queue_type == 'HEARTBEAT':
-                self.setup_queue(queue_name, ttl=True, exclusive=True)
+                self.setup_queue(queue_name, ttl=False, exclusive=True)
             else:
                 self.setup_queue(queue_name, ttl=True, exclusive=False)
 
         for queue_name in action_queues:
-            self.setup_queue(queue_name, ttl=False, exclusive=False, durable=True)
+            self.setup_queue(queue_name, ttl=False, exclusive=False, durable=False)
+
+        for queue_name in events_queues:
+            self.setup_queue(queue_name, ttl=True, exclusive=False)
 
         for exchange_type, exchange_name in MOLECULER_EXCHANGES.items():
             self.setup_exchange(exchange_name)
