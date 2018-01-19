@@ -35,7 +35,7 @@ INFO_PACKET_TEMPLATE = {
     'ver': '2',
     'sender': None,
     'services': [{
-        'actions': {'$python.test': service_builder('$python.test')},
+        'actions': {'python_test': service_builder('python_test')},
         'events': {},
         'metadata': {},
         'name': '$python',

@@ -132,13 +132,16 @@ class MoleculerNode(object):
             self._channel.basic_consume(self.consumer.request, self.moleculer_topics.queues['REQUEST'])
             self._channel.basic_consume(self.consumer.response, self.moleculer_topics.queues['RESPONSE'])
             self._channel.basic_consume(self.consumer.event, self.moleculer_topics.queues['EVENT'])
+            for queue_name in self.moleculer_topics.action_queues:
+                self._channel.basic_consume(self.consumer.request, queue_name)
             self._connection.add_timeout(0.5, self.discover_packet)
         else:
             self._connection.add_timeout(0.1, self.subscribe_to_topics)
 
     def create_topics(self):
         queues = self.moleculer_topics.queues.items()
-        self.expect_topics_count = len(queues) + len(MOLECULER_EXCHANGES)
+        action_queues = self.moleculer_topics.action_queues
+        self.expect_topics_count = len(queues) + len(MOLECULER_EXCHANGES) + len(action_queues)
 
         for queue_type, queue_name in queues:
             if queue_type in ('REQUEST', 'RESPONSE'):
@@ -147,6 +150,10 @@ class MoleculerNode(object):
                 self.setup_queue(queue_name, ttl=True, exclusive=True)
             else:
                 self.setup_queue(queue_name, ttl=True, exclusive=False)
+
+        for queue_name in action_queues:
+            self.setup_queue(queue_name, ttl=False, exclusive=False, durable=True)
+
         for exchange_type, exchange_name in MOLECULER_EXCHANGES.items():
             self.setup_exchange(exchange_name)
 
@@ -227,7 +234,7 @@ class MoleculerNode(object):
         LOGGER.info('Exchange declared')
         self.ready_topics.append(None)
 
-    def setup_queue(self, queue_name, ttl=True, exclusive=False):
+    def setup_queue(self, queue_name, ttl=True, exclusive=False, durable=False):
         """Setup the queue on RabbitMQ by invoking the Queue.Declare RPC
         command. When it is complete, the on_queue_declareok method will
         be invoked by pika.
@@ -241,7 +248,8 @@ class MoleculerNode(object):
         arguments = {}
         if ttl:
             arguments['x-message-ttl'] = 5000  # eventTimeToLive: https://github.com/ice-services/moleculer/pull/72
-        self._channel.queue_declare(self.on_queue_declareok, queue_name, exclusive=exclusive, arguments=arguments)
+        self._channel.queue_declare(self.on_queue_declareok, queue_name,
+                                    exclusive=exclusive, durable=durable, arguments=arguments)
 
     def on_queue_declareok(self, method_frame):
         """Method invoked by pika when the Queue.Declare RPC call made in
