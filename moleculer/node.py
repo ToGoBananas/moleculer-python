@@ -37,7 +37,7 @@ class MoleculerNode(object):
 
         """
         self._connection = None
-        self._channel: Channel = None
+        self.channel: Channel = None
 
         self._deliveries = None
         self._acked = None
@@ -87,7 +87,7 @@ class MoleculerNode(object):
         :param str reply_text: The server provided reply_text if given
 
         """
-        self._channel = None
+        self.channel = None
         if self._stopping:
             self._connection.ioloop.stop()
         else:
@@ -101,7 +101,7 @@ class MoleculerNode(object):
 
     def on_channel_open(self, channel):
         LOGGER.info('Channel opened')
-        self._channel: Channel = channel
+        self.channel: Channel = channel
         # self._channel.basic_qos(prefetch_count=1)  # TODO: figure out why prefetch must be disabled to make it work
         # self._channel.confirm_delivery()  # Enabled delivery confirmations
         self.add_on_channel_close_callback()
@@ -115,25 +115,25 @@ class MoleculerNode(object):
             'sender': self.NODE_ID,
             'cpu': psutil.cpu_percent(interval=None)
         }
-        self._channel.basic_publish(MOLECULER_EXCHANGES['HEARTBEAT'], '',
-                                    json.dumps(heartbeat_packet))
+        self.channel.basic_publish(MOLECULER_EXCHANGES['HEARTBEAT'], '',
+                                   json.dumps(heartbeat_packet))
         self._connection.add_timeout(self.HEARTBEAT_INTERVAL, self.start_heartbeating)
 
     def subscribe_to_topics(self):
         if self.is_bindings_ready:
             self.add_on_cancel_callback()
             # for queue in self.moleculer_topics.queues.values():
-            self._channel.basic_consume(self.consumer.discover, self.moleculer_topics.queues['DISCOVER'])
-            self._channel.basic_consume(self.consumer.info, self.moleculer_topics.queues['INFO'])
-            self._channel.basic_consume(self.consumer.ping, self.moleculer_topics.queues['PING'])
-            self._channel.basic_consume(self.consumer.request, self.moleculer_topics.queues['REQUEST'])
-            self._channel.basic_consume(self.consumer.response, self.moleculer_topics.queues['RESPONSE'])
-            self._channel.basic_consume(self.consumer.event, self.moleculer_topics.queues['EVENT'])
+            self.channel.basic_consume(self.consumer.discover, self.moleculer_topics.queues['DISCOVER'])
+            self.channel.basic_consume(self.consumer.info, self.moleculer_topics.queues['INFO'])
+            self.channel.basic_consume(self.consumer.ping, self.moleculer_topics.queues['PING'])
+            self.channel.basic_consume(self.consumer.request, self.moleculer_topics.queues['REQUEST'])
+            self.channel.basic_consume(self.consumer.response, self.moleculer_topics.queues['RESPONSE'])
+            self.channel.basic_consume(self.consumer.event, self.moleculer_topics.queues['EVENT'], no_ack=True)
 
             for queue_name in self.moleculer_topics.action_queues:
-                self._channel.basic_consume(self.consumer.request, queue_name)
+                self.channel.basic_consume(self.consumer.request, queue_name)
             for queue_name in self.moleculer_topics.event_queues:
-                self._channel.basic_consume(self.consumer.event, queue_name, no_ack=True)
+                self.channel.basic_consume(self.consumer.event, queue_name, no_ack=True)
 
             self._connection.add_timeout(0.5, self.discover_packet)
         else:
@@ -181,7 +181,7 @@ class MoleculerNode(object):
     def bind_queues_to_exchanges(self):
         self.expect_bindings_count = len(self.moleculer_topics.bindings)
         for queue_name, fanout_name in self.moleculer_topics.bindings.items():
-            self._channel.queue_bind(self.on_bindok, queue_name, fanout_name)
+            self.channel.queue_bind(self.on_bindok, queue_name, fanout_name)
 
     def add_on_channel_close_callback(self):
         """This method tells pika to call the on_channel_closed method if
@@ -189,14 +189,14 @@ class MoleculerNode(object):
 
         """
         LOGGER.info('Adding channel close callback')
-        self._channel.add_on_close_callback(self.on_channel_closed)
+        self.channel.add_on_close_callback(self.on_channel_closed)
 
     def discover_packet(self):
         req = {
             'ver': '2',
             'sender': self.NODE_ID
         }
-        self._channel.basic_publish(MOLECULER_EXCHANGES['DISCOVER'], '',  json.dumps(req))
+        self.channel.basic_publish(MOLECULER_EXCHANGES['DISCOVER'], '', json.dumps(req))
 
     def on_channel_closed(self, channel, reply_code, reply_text):
         """Invoked by pika when RabbitMQ unexpectedly closes the channel.
@@ -211,7 +211,7 @@ class MoleculerNode(object):
 
         """
         LOGGER.warning('Channel was closed: (%s) %s', reply_code, reply_text)
-        self._channel = None
+        self.channel = None
         if not self._stopping:
             self._connection.close()
 
@@ -224,9 +224,9 @@ class MoleculerNode(object):
 
         """
         LOGGER.info('Declaring exchange %s', exchange_name)
-        self._channel.exchange_declare(self.on_exchange_declareok,
-                                       exchange_name,
-                                       self.EXCHANGE_TYPE, durable=True)
+        self.channel.exchange_declare(self.on_exchange_declareok,
+                                      exchange_name,
+                                      self.EXCHANGE_TYPE, durable=True)
 
     def on_exchange_declareok(self, unused_frame):
         """Invoked by pika when RabbitMQ has finished the Exchange.Declare RPC
@@ -252,8 +252,8 @@ class MoleculerNode(object):
         arguments = {}
         if ttl:
             arguments['x-message-ttl'] = 5000  # eventTimeToLive: https://github.com/ice-services/moleculer/pull/72
-        self._channel.queue_declare(self.on_queue_declareok, queue_name,
-                                    exclusive=exclusive, durable=durable, arguments=arguments)
+        self.channel.queue_declare(self.on_queue_declareok, queue_name,
+                                   exclusive=exclusive, durable=durable, arguments=arguments)
 
     def on_queue_declareok(self, method_frame):
         """Method invoked by pika when the Queue.Declare RPC call made in
@@ -282,7 +282,7 @@ class MoleculerNode(object):
 
         """
         LOGGER.info('Adding consumer cancellation callback')
-        self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
+        self.channel.add_on_cancel_callback(self.on_consumer_cancelled)
 
     def on_consumer_cancelled(self, method_frame):
         """Invoked by pika when RabbitMQ sends a Basic.Cancel for a consumer
@@ -293,8 +293,8 @@ class MoleculerNode(object):
         """
         LOGGER.info('Consumer was cancelled remotely, shutting down: %r',
                     method_frame)
-        if self._channel:
-            self._channel.close()
+        if self.channel:
+            self.channel.close()
 
     def run(self):
         """Run the service code by connecting and then starting the IOLoop.
@@ -332,8 +332,8 @@ class MoleculerNode(object):
             'ver': '2',
             'sender': self.NODE_ID
         }
-        self._channel.basic_publish(MOLECULER_EXCHANGES['DISCONNECT'], '',
-                                    json.dumps(disconnect_packet))
+        self.channel.basic_publish(MOLECULER_EXCHANGES['DISCONNECT'], '',
+                                   json.dumps(disconnect_packet))
         self._stopping = True
         self.close_channel()
         self.close_connection()
@@ -343,9 +343,9 @@ class MoleculerNode(object):
         the Channel.Close RPC command.
 
         """
-        if self._channel is not None:
+        if self.channel is not None:
             LOGGER.info('Closing the channel')
-            self._channel.close()
+            self.channel.close()
 
     def close_connection(self):
         """This method closes the connection to RabbitMQ."""

@@ -10,8 +10,18 @@ class MoleculerConsumer:
         self.node_id = node_id
         self.is_node_discovered = False
 
-    def discover(self, unused_channel, basic_deliver, properties, body):
-        pass
+    def build_info_package(self):
+        info_packet = INFO_PACKET_TEMPLATE
+        info_packet['sender'] = self.node_id
+        info_packet['services'][0]['nodeID'] = self.node_id
+        return info_packet
+
+    def discover(self, channel, basic_deliver, properties, body):
+        discover_packet = json.loads(body)
+        sender = discover_packet['sender']
+        sender_queue = 'MOL.INFO.{node_id}'.format(node_id=sender)
+        info_packet = self.build_info_package()  # TODO: reuse same package
+        channel.basic_publish('', sender_queue, json.dumps(info_packet))
 
     def info(self, channel, basic_deliver, properties, body):
         if not self.is_node_discovered:
@@ -67,10 +77,12 @@ class MoleculerConsumer:
         pass
 
     def response(self, channel, basic_deliver, properties, body):
-        channel.basic_ack(basic_deliver.delivery_tag)
+        # channel.basic_ack(basic_deliver.delivery_tag)
+        pass
         #  TODO: handle responses from other services
 
     def event(self, channel, basic_deliver, properties, body):
+        print('EVENT!!!!')
         event_packet = json.loads(body)
         sender, event, data = event_packet['sender'], event_packet['event'], event_packet['data']
         event_handler(sender, event, data)
