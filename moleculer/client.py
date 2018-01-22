@@ -14,14 +14,22 @@ class MoleculerClient(MoleculerNode):
         self.channel: Channel = channel
         self.add_on_channel_close_callback()
         info_queue = 'MOL.INFO.{node_id}'.format(node_id=self.NODE_ID)
+        disconnect_queue = 'MOL.DISCONNECT.{node_id}'.format(node_id=self.NODE_ID)
         self.setup_queue(info_queue)
+        self.setup_queue(disconnect_queue)
         self.channel.queue_bind(self.on_bindok, info_queue, 'MOL.INFO')
+        self.channel.queue_bind(self.on_bindok, disconnect_queue, 'MOL.DISCONNECT')
         self.channel.basic_consume(self.process_info_packages, info_queue)
+        self.channel.basic_consume(self.on_node_disconnect, disconnect_queue)
         self.discover_packet()
 
     def process_info_packages(self, unused_channel, basic_deliver, properties, body):
         info_packet = json.loads(body)
         self.network.add_node(info_packet)
+
+    def on_node_disconnect(self, unused_channel, basic_deliver, properties, body):
+        disconnect_package = json.loads(body)
+        self.network.disconnect_node(disconnect_package['sender'])
 
     def emit(self, event_name, data=None):
         candidates = self.get_emit_candidates(event_name)
