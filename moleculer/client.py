@@ -55,6 +55,12 @@ class MoleculerClient(MoleculerNode):
                 queue_name = 'MOL.EVENT.{node_id}'.format(node_id=node_id)
                 self.channel.basic_publish('', queue_name, event_package)
 
+    def call(self):
+        pass
+
+    def dcall(self):
+        pass
+
     def get_emit_candidates(self, event_name):
         service_names = set()
         for node_id, node_info in self.network.NODES.items():
