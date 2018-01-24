@@ -8,7 +8,7 @@ setup(
   author = 'Andrei Khaliaukin',
   author_email = 'endpoo@gmail.com',
   url = 'https://github.com/ToGoBananas/moleculer-python', # use the URL to the github repo
-  download_url = 'https://github.com/ToGoBananas/moleculer-python/archive/0.1.tar.gz', # I'll explain this in a second
+    download_url='https://github.com/ToGoBananas/moleculer-python/archive/0.2.tar.gz',  # I'll explain this in a second
   keywords = ['moleculer', 'microservices'], # arbitrary keywords
   classifiers = [],
 )
