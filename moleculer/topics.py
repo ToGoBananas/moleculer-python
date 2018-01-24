@@ -43,9 +43,10 @@ class MoleculerTopics:
                 setattr(self, queue_name, getattr(MoleculerTopics, queue_name).format(node_id=node_id))
             else:
                 queue_string = getattr(MoleculerTopics, queue_name).format(node_id=node_id)
-                queue_string = queue_string.repalce('MOL', 'MOL-' + namespace)
+                queue_string = queue_string.replace('MOL', 'MOL-' + namespace)
                 setattr(self, queue_name, queue_string)
         self.namespace = namespace
+        self.exchanges = self.generate_exchanges()
 
     @property
     def bindings(self):
@@ -82,9 +83,8 @@ class MoleculerTopics:
                 result.append(template.format(service_name=service_name, event=event, namespace=self.namespace))
         return result
 
-    @property
-    def exchanges(self):
+    def generate_exchanges(self):
         if self.namespace is None:
             return EXCHANGES
         else:
-            return {x: x.replace('MOL', 'MOL-' + self.namespace) for x in EXCHANGES}
+            return {key: val.replace('MOL', 'MOL-' + self.namespace) for key, val in EXCHANGES.items()}

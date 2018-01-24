@@ -5,20 +5,31 @@ import json
 
 class MoleculerClient(MoleculerNode):
 
-    def __init__(self, amqp_url):
-        super().__init__(amqp_url, node_id='PYTHON-CLIENT')
+    def __init__(self, amqp_url, namespace=None):
+        self.namespace = namespace
+        super().__init__(amqp_url, node_id='PYTHON-CLIENT', namespace=self.namespace)
         self.network = NetworkInfo()
+        if self.namespace is None:
+            self.info_template = 'MOL.INFO.{node_id}'
+            self.disconnect_template = 'MOL.DISCONNECT.{node_id}'
+            self.eventb_template = 'MOL.EVENTB.{service}.{event}'
+            self.event_template = 'MOL.EVENT.{node_id}'
+        else:
+            self.info_template = 'MOL-{namespace}.INFO.{node_id}'
+            self.disconnect_template = 'MOL-{namespace}.DISCONNECT.{node_id}'
+            self.eventb_template = 'MOL-{namespace}.EVENTB.{service}.{event}'
+            self.event_template = 'MOL-{namespace}.EVENT.{node_id}'
 
     def on_channel_open(self, channel):
         LOGGER.info('Channel opened')
         self.channel: Channel = channel
         self.add_on_channel_close_callback()
-        info_queue = 'MOL.INFO.{node_id}'.format(node_id=self.NODE_ID)
-        disconnect_queue = 'MOL.DISCONNECT.{node_id}'.format(node_id=self.NODE_ID)
+        info_queue = self.info_template.format(node_id=self.NODE_ID, namespace=self.namespace)
+        disconnect_queue = self.disconnect_template.format(node_id=self.NODE_ID, namespace=self.namespace)
         self.setup_queue(info_queue)
         self.setup_queue(disconnect_queue)
-        self.channel.queue_bind(self.on_bindok, info_queue, 'MOL.INFO')
-        self.channel.queue_bind(self.on_bindok, disconnect_queue, 'MOL.DISCONNECT')
+        self.channel.queue_bind(self.on_bindok, info_queue, self.moleculer_topics.exchanges['INFO'])
+        self.channel.queue_bind(self.on_bindok, disconnect_queue, self.moleculer_topics.exchanges['DISCONNECT'])
         self.channel.basic_consume(self.process_info_packages, info_queue)
         self.channel.basic_consume(self.on_node_disconnect, disconnect_queue)
         self.discover_packet()
@@ -40,7 +51,9 @@ class MoleculerClient(MoleculerNode):
                 data = {}
             event_package = MoleculerClient.build_event('PYTHON-CLIENT', event_name, data)
             for service_name in candidates:
-                queue_name = 'MOL.EVENTB.{service}.{event}'.format(service=service_name, event=event_name)
+                queue_name = self.eventb_template.format(service=service_name, event=event_name,
+                                                         namespace=self.namespace)
+                print(queue_name)
                 self.channel.basic_publish('', queue_name, event_package)
 
     def broadcast(self, event_name, data=None):
@@ -52,7 +65,7 @@ class MoleculerClient(MoleculerNode):
                 data = {}
             event_package = MoleculerClient.build_event('PYTHON-CLIENT', event_name, data)
             for node_id in candidates:
-                queue_name = 'MOL.EVENT.{node_id}'.format(node_id=node_id)
+                queue_name = self.event_template.format(node_id=node_id, namespace=self.namespace)
                 self.channel.basic_publish('', queue_name, event_package)
 
     def call(self):
@@ -91,6 +104,15 @@ class MoleculerClient(MoleculerNode):
 class NetworkInfo:
     NODES = {}
 
+    def __init__(self, namespace=None):
+        self.namespace = namespace
+        if self.namespace is None:
+            self.reqb_template = 'MOL.REQB.{action}'
+            self.service_reqb_template = 'MOL.REQB.{service_name}.{action}'
+        else:
+            self.reqb_template = 'MOL.REQB.{action}'.replace('MOL', 'MOL-' + self.namespace)
+            self.service_reqb_template = 'MOL.REQB.{service_name}.{action}'.replace('MOL', 'MOL-' + self.namespace)
+
     def add_node(self, info_packet: dict):
         node_id = info_packet['sender']
         if node_id not in self.NODES.keys():
@@ -104,10 +126,10 @@ class NetworkInfo:
                 is_service_node = bool(service_name == '$node')
                 for action_name, action_spec in service['actions'].items():
                     if is_service_node:
-                        queue_name = 'MOL.REQB.{action}'.format(action=action_name)
+                        queue_name = self.reqb_template.format(action=action_name, namespace=self.namespace)
                     else:
-                        queue_name = 'MOL.REQB.{service_name}.{action}'.format(service_name=service_name,
-                                                                               action=action_name)
+                        queue_name = self.service_reqb_template.format(service_name=service_name, action=action_name,
+                                                                       namespace=self.namespace)
                     node['actions'][action_name] = queue_name
 
                 for event_name in service['events'].keys():

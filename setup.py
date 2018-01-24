@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
   name = 'moleculer',
   packages = ['moleculer'], # this must be the same as the name above
-  version = '0.1',
+  version='0.2',
   description = 'Moleculer node and client for amqp with json serializer',
   author = 'Andrei Khaliaukin',
   author_email = 'endpoo@gmail.com',

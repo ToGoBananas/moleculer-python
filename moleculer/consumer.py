@@ -95,7 +95,7 @@ class MoleculerConsumer:
         #  TODO: handle responses from other services
 
     def event(self, channel, basic_deliver, properties, body):
-        # print('EVENT!!!!')
+        print('EVENT!!!!')
         event_packet = json.loads(body)
         sender, event, data = event_packet['sender'], event_packet['event'], event_packet['data']
         event_handler(sender, event, data)
