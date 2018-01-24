@@ -5,7 +5,7 @@ import pika
 import json
 import psutil
 
-from .topics import MoleculerTopics, EXCHANGES as MOLECULER_EXCHANGES
+from .topics import MoleculerTopics
 from pika.channel import Channel
 from pika.adapters.select_connection import SelectConnection
 from .consumer import MoleculerConsumer
@@ -29,7 +29,7 @@ class MoleculerNode(object):
     NODE_ID = 'python-node-1'
     HEARTBEAT_INTERVAL = 5
 
-    def __init__(self, amqp_url, node_id=None):
+    def __init__(self, amqp_url, node_id=None, namespace=None):
         """Setup the example publisher object, passing in the URL we will use
         to connect to RabbitMQ.
 
@@ -54,8 +54,11 @@ class MoleculerNode(object):
         if node_id is not None:
             self.NODE_ID = node_id
 
-        self.moleculer_topics = MoleculerTopics(self.NODE_ID)
-        self.consumer = MoleculerConsumer(self.NODE_ID)
+        self.namespace = namespace
+
+        self.moleculer_topics = MoleculerTopics(self.NODE_ID, namespace=self.namespace)
+        self.consumer = MoleculerConsumer(self.NODE_ID, moleculer_topics=self.moleculer_topics,
+                                          namespace=self.namespace)
 
     def connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
@@ -115,7 +118,7 @@ class MoleculerNode(object):
             'sender': self.NODE_ID,
             'cpu': psutil.cpu_percent(interval=None)
         }
-        self.channel.basic_publish(MOLECULER_EXCHANGES['HEARTBEAT'], '',
+        self.channel.basic_publish(self.moleculer_topics.exchanges['HEARTBEAT'], '',
                                    json.dumps(heartbeat_packet))
         self._connection.add_timeout(self.HEARTBEAT_INTERVAL, self.start_heartbeating)
 
@@ -142,7 +145,8 @@ class MoleculerNode(object):
     def create_topics(self):
         queues = self.moleculer_topics.queues.items()
         action_queues, events_queues = self.moleculer_topics.action_queues, self.moleculer_topics.event_queues
-        self.expect_topics_count = len(queues) + len(MOLECULER_EXCHANGES) + len(action_queues) + len(events_queues)
+        self.expect_topics_count = len(queues) + len(self.moleculer_topics.exchanges) + len(action_queues) + len(
+            events_queues)
 
         for queue_type, queue_name in queues:
             if queue_type in ('REQUEST', 'RESPONSE'):
@@ -158,7 +162,7 @@ class MoleculerNode(object):
         for queue_name in events_queues:
             self.setup_queue(queue_name, ttl=True, exclusive=False)
 
-        for exchange_type, exchange_name in MOLECULER_EXCHANGES.items():
+        for exchange_type, exchange_name in self.moleculer_topics.exchanges.items():
             self.setup_exchange(exchange_name)
 
         self._connection.add_timeout(0.1, self.check_topics_status)
@@ -196,7 +200,7 @@ class MoleculerNode(object):
             'ver': '2',
             'sender': self.NODE_ID
         }
-        self.channel.basic_publish(MOLECULER_EXCHANGES['DISCOVER'], '', json.dumps(req))
+        self.channel.basic_publish(self.moleculer_topics.exchanges['DISCOVER'], '', json.dumps(req))
 
     def on_channel_closed(self, channel, reply_code, reply_text):
         """Invoked by pika when RabbitMQ unexpectedly closes the channel.
@@ -332,7 +336,7 @@ class MoleculerNode(object):
             'ver': '2',
             'sender': self.NODE_ID
         }
-        self.channel.basic_publish(MOLECULER_EXCHANGES['DISCONNECT'], '',
+        self.channel.basic_publish(self.moleculer_topics.exchanges['DISCONNECT'], '',
                                    json.dumps(disconnect_packet))
         self._stopping = True
         self.close_channel()

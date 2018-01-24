@@ -9,6 +9,11 @@ EXCHANGES = {
     'DISCONNECT': 'MOL.DISCONNECT'
 }
 
+REQB = 'MOL.REQB.{service_name}.{action}'
+REQB_NAMESPACE = 'MOL-{namespace}.REQB.{service_name}.{action}'
+EVENTB = 'MOL.EVENTB.{service_name}.{event}'
+EVENTB_NAMESPACE = 'MOL-{namespace}.EVENTB.{service_name}.{event}'
+
 
 class MoleculerTopics:
     EVENT_QUEUE = 'MOL.EVENT.{node_id}'
@@ -32,32 +37,54 @@ class MoleculerTopics:
             result[attr.replace('_QUEUE', '')] = getattr(self, attr)
         return result
 
-    def __init__(self, node_id):
+    def __init__(self, node_id, namespace=None):
         for queue_name in self.queue_attrs:
-            setattr(self, queue_name, getattr(MoleculerTopics, queue_name).format(node_id=node_id))
+            if namespace is None:
+                setattr(self, queue_name, getattr(MoleculerTopics, queue_name).format(node_id=node_id))
+            else:
+                queue_string = getattr(MoleculerTopics, queue_name).format(node_id=node_id)
+                queue_string = queue_string.repalce('MOL', 'MOL-' + namespace)
+                setattr(self, queue_name, queue_string)
+        self.namespace = namespace
 
     @property
     def bindings(self):
         result = {}
         for queue_type, queue_name in self.queues.items():
-            if queue_type in EXCHANGES:
-                result[queue_name] = EXCHANGES[queue_type]
+            exchanges = self.exchanges
+            if queue_type in exchanges:
+                result[queue_name] = exchanges[queue_type]
         return result
 
     @property
     def action_queues(self):
+        if self.namespace is None:
+            template = REQB
+        else:
+            template = REQB_NAMESPACE
         result = []
         for service in INFO_PACKET_TEMPLATE['services']:
             service_name = service['name']
             for action in service['actions'].keys():
-                result.append('MOL.REQB.{service_name}.{action}'.format(service_name=service_name, action=action))
+                result.append(template.format(service_name=service_name, action=action, namespace=self.namespace))
         return result
 
     @property
     def event_queues(self):
+        if self.namespace is None:
+            template = EVENTB
+        else:
+            template = EVENTB_NAMESPACE
         result = []
         for service in INFO_PACKET_TEMPLATE['services']:
             service_name = service['name']
             for event in service['events'].keys():
-                result.append('MOL.EVENTB.{service_name}.{event}'.format(service_name=service_name, event=event))
+                result.append(template.format(service_name=service_name, event=event, namespace=self.namespace))
         return result
+
+    @property
+    def exchanges(self):
+        if self.namespace is None:
+            return EXCHANGES
+        else:
+            return {x: x.replace('MOL', 'MOL-' + self.namespace) for x in EXCHANGES}
