@@ -5,20 +5,20 @@ import json
 
 class MoleculerClient(MoleculerNode):
 
-    def __init__(self, amqp_url):
-        super().__init__(amqp_url, node_id='PYTHON-CLIENT')
+    def __init__(self, amqp_url, namespace=None):
+        super().__init__(amqp_url, node_id='PYTHON-CLIENT', namespace=namespace)
         self.network = NetworkInfo()
 
     def on_channel_open(self, channel):
         LOGGER.info('Channel opened')
         self.channel: Channel = channel
         self.add_on_channel_close_callback()
-        info_queue = 'MOL.INFO.{node_id}'.format(node_id=self.NODE_ID)
-        disconnect_queue = 'MOL.DISCONNECT.{node_id}'.format(node_id=self.NODE_ID)
+        info_queue = 'MOL-bctmsg.INFO.{node_id}'.format(node_id=self.NODE_ID)
+        disconnect_queue = 'MOL-bctmsg.DISCONNECT.{node_id}'.format(node_id=self.NODE_ID)
         self.setup_queue(info_queue)
         self.setup_queue(disconnect_queue)
-        self.channel.queue_bind(self.on_bindok, info_queue, 'MOL.INFO')
-        self.channel.queue_bind(self.on_bindok, disconnect_queue, 'MOL.DISCONNECT')
+        self.channel.queue_bind(self.on_bindok, info_queue, 'MOL-bctmsg.INFO')
+        self.channel.queue_bind(self.on_bindok, disconnect_queue, 'MOL-bctmsg.DISCONNECT')
         self.channel.basic_consume(self.process_info_packages, info_queue)
         self.channel.basic_consume(self.on_node_disconnect, disconnect_queue)
         self.discover_packet()
@@ -40,7 +40,7 @@ class MoleculerClient(MoleculerNode):
                 data = {}
             event_package = MoleculerClient.build_event('PYTHON-CLIENT', event_name, data)
             for service_name in candidates:
-                queue_name = 'MOL.EVENTB.{service}.{event}'.format(service=service_name, event=event_name)
+                queue_name = 'MOL-bctmsg.EVENTB.{service}.{event}'.format(service=service_name, event=event_name)
                 self.channel.basic_publish('', queue_name, event_package)
 
     def broadcast(self, event_name, data=None):
@@ -52,7 +52,7 @@ class MoleculerClient(MoleculerNode):
                 data = {}
             event_package = MoleculerClient.build_event('PYTHON-CLIENT', event_name, data)
             for node_id in candidates:
-                queue_name = 'MOL.EVENT.{node_id}'.format(node_id=node_id)
+                queue_name = 'MOL-bctmsg.EVENT.{node_id}'.format(node_id=node_id)
                 self.channel.basic_publish('', queue_name, event_package)
 
     def call(self):
@@ -104,10 +104,10 @@ class NetworkInfo:
                 is_service_node = bool(service_name == '$node')
                 for action_name, action_spec in service['actions'].items():
                     if is_service_node:
-                        queue_name = 'MOL.REQB.{action}'.format(action=action_name)
+                        queue_name = 'MOL-bctmsg.REQB.{action}'.format(action=action_name)
                     else:
-                        queue_name = 'MOL.REQB.{service_name}.{action}'.format(service_name=service_name,
-                                                                               action=action_name)
+                        queue_name = 'MOL-bctmsg.REQB.{service_name}.{action}'.format(service_name=service_name,
+                                                                                      action=action_name)
                     node['actions'][action_name] = queue_name
 
                 for event_name in service['events'].keys():
