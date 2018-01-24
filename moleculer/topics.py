@@ -87,4 +87,4 @@ class MoleculerTopics:
         if self.namespace is None:
             return EXCHANGES
         else:
-            return {x: x.replace('MOL', 'MOL-' + self.namespace) for x in EXCHANGES}
+            return {key: val.replace('MOL', 'MOL-' + self.namespace) for key, val in EXCHANGES.items()}
