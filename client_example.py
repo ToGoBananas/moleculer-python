@@ -10,10 +10,8 @@ def main():
 
     # wait for initialization
     time.sleep(5)  # TODO: extract 'ready' event from thread
-    print(client.emit('event_test'))
-
-    time.sleep(3)
-    print(client.broadcast('event_test'))
+    client.emit('event_test')
+    client.broadcast('event_test')
 
 
 if __name__ == '__main__':
