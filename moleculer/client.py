@@ -53,7 +53,7 @@ class MoleculerClient(MoleculerNode):
             for service_name in candidates:
                 queue_name = self.eventb_template.format(service=service_name, event=event_name,
                                                          namespace=self.namespace)
-                print(queue_name)
+                # print(queue_name)
                 self.channel.basic_publish('', queue_name, event_package)
 
     def broadcast(self, event_name, data=None):
